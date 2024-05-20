@@ -10,11 +10,11 @@ app.use(cors());
 app.use(express.json());
 
 const dbPool = mysql.createPool({
-  host: "sql.freedb.tech",
-  user: "freedb_naeem",
+  host: process.env.db_host,
+  user: process.env.db_user,
   port: "3306",
-  password: "Q!uf?9GUG76&Sc8",
-  database: "freedb_RUET Alumni",
+  password: process.env.db_pass,
+  database: process.env.db_db,
 });
 
 app.get("/", (req, res) => {
