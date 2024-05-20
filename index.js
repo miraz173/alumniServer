@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 import mysql from "mysql2";
 import cors from "cors";
 
-const ip = 'localhost';
+const ip = '0.0.0.0';
 const app = express();
 app.use(cors());
 app.use(express.json());
