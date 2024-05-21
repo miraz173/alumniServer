@@ -5,6 +5,7 @@ import mysql from "mysql2";
 import cors from "cors";
 
 const ip = '0.0.0.0';
+const PORT = process.env.PORT || 3000;
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -251,6 +252,6 @@ app.post("/kahoot", (req, res) => {
   });
 })
 
-app.listen(3001, ip, () => {
-  console.log("Server is running on port 3001");
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}. And I'm 173r`);
 });
