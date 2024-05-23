@@ -22,8 +22,7 @@ app.get("/", (req, res) => {
   console.clear();
   console.log('get called');
   const query = req.query.query;
-  const searchQuery = (query && query.toString().trim()) || "RUET";
-  // console.log("input text:", searchQuery);
+  const searchQuery = (query && query.toString().trim().slice(1)) || "RUET";
 
   const keywords = searchQuery.split(",").map((keyword) => keyword.trim());
   const keywordList = keywords.map((keyword) => `'${keyword}'`).join(",");
@@ -53,7 +52,9 @@ app.get("/", (req, res) => {
       console.error("Error connecting to MySQL:", err);
       res.sendStatus(500);
     } else {
-      connection.query(sql, (error, results) => {
+      let qry = query[0]==='1'? sql:sql2;
+      console.log(qry, "---");
+      connection.query(qry, (error, results) => {
         connection.release();
         if (error) {
           console.error("Database query error:", error);
@@ -66,6 +67,7 @@ app.get("/", (req, res) => {
   });
 
 });
+
 
 app.get("/", (req, res) => {
   const query = req.query.query;
