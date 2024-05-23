@@ -67,76 +67,40 @@ app.get("/", (req, res) => {
 
 });
 
-app.post("/", (req, res) => {
-  console.clear();
-  console.log('post called');
+app.get("/", (req, res) => {
+  const query = req.query.query;
+  const searchQuery = (query && query.toString().trim().slice(1)) || "RUET";
 
-  const person = req.body;
-
-  const personArr = [
-    person.roll,
-    person.name,
-    person.thumbnail,
-    person.image,
-    person.position,
-    person.company,
-    person.higherEd,
-    person.city,
-    person.state,
-    person.country,
-    person.contacts,
-    person.about,
-    person.attributes,
-    person.password
-  ];
+  const keywords = searchQuery.split(",").map((keyword) => keyword.trim());
+  const keywordList = keywords.map((keyword) => `'${keyword}'`).join(",");
+  const keywordList2 = keywords.map((keyword) => `'%${keyword}%'`).join(" or keywords.attribute like ");
+  console.log(keywordList2, keywords);
 
   const sql = `
-    INSERT INTO alumni (roll, name, thumbnail, image, position, higherEd, company, city, state, country, contacts, about, attributes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) as pdata
-    ON DUPLICATE KEY UPDATE
-      name = pdata.name,
-      thumbnail = pdata.thumbnail,
-      image = pdata.image,
-      position = pdata.position,
-      company = pdata.company,
-      higherEd = pdata.higherEd,
-      city = pdata.city,
-      state = pdata.state,
-      country = pdata.country,
-      contacts = pdata.contacts,
-      about = pdata.about,
-      attributes=pdata.attributes;
-    `; //doesn't have password verification embedded in it.
+  select  a.*, 
+  CONCAT_WS(', ', a.roll, higherEd, state, country, attributes) AS keywords 
+  from alumni a
+  join keywords on keywords.roll=a.roll 
+  where keywords.attribute in (${keywordList})
+  GROUP BY a.roll
+  HAVING COUNT(DISTINCT keywords.attribute) = ${keywords.length};`;
 
-  const sql2 = `INSERT INTO cse3100.alumni (roll, name, thumbnail, image, position, company, higherEd, city, state, country, contacts, about, attributes)
-  SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-  FROM DUAL
-  WHERE EXISTS (
-    SELECT 1
-    FROM users
-    WHERE users.roll = roll AND users.password = ?
-  )
-  ON DUPLICATE KEY UPDATE
-    name = VALUES(name),
-    thumbnail = VALUES(thumbnail),
-    image = VALUES(image),
-    position = VALUES(position),
-    company = VALUES(company),
-    higherEd = VALUES(higherEd),
-    city = VALUES(city),
-    state = VALUES(state),
-    country = VALUES(country),
-    contacts = VALUES(contacts),
-    about = VALUES(about),
-    attributes = VALUES(attributes);
-  `
+  const sql2 = `
+  select  a.*, 
+  CONCAT_WS(', ', a.roll, higherEd, state, country, attributes) AS keywords 
+  from alumni a
+  join keywords on keywords.roll=a.roll 
+  where keywords.attribute like ${keywordList2}
+  GROUP BY a.roll
+  HAVING COUNT(DISTINCT keywords.attribute) = ${keywords.length};`;
 
   dbPool.getConnection((err, connection) => {
     if (err) {
-      console.log("Error connecting to MySQL:", err);
+      console.error("Error connecting to MySQL:", err);
       res.sendStatus(500);
     } else {
-      connection.query(sql2, personArr, (error, results) => {
+      let qry = query[0]==='1'? sql:sql2;
+      connection.query(qry, (error, results) => {
         connection.release();
         if (error) {
           console.error("Database query error:", error);
@@ -147,11 +111,11 @@ app.post("/", (req, res) => {
       });
     }
   });
+
 });
 
 app.post("/login", (req, res) => {
   const { roll, password } = req.body;
-
   dbPool.getConnection((err, connection) => {
     if (err) {
       console.error("Error connecting to MySQL:", err);
