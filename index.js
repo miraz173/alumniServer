@@ -91,7 +91,7 @@ app.post("/", (req, res) => {
   ];
 
   const sql = `
-    INSERT INTO cse3100.alumni (roll, name, thumbnail, image, position, higherEd, company, city, state, country, contacts, about, attributes)
+    INSERT INTO alumni (roll, name, thumbnail, image, position, higherEd, company, city, state, country, contacts, about, attributes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) as pdata
     ON DUPLICATE KEY UPDATE
       name = pdata.name,
