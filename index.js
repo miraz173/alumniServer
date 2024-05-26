@@ -1,16 +1,16 @@
 import jwt from "jsonwebtoken";
-import {config} from "dotenv";
+// import {config} from "dotenv";
 import express from "express";
 import bcrypt from "bcrypt";
 import mysql from "mysql2";
 import cors from "cors";
 
-const ip = 'localhost';
+// const ip = 'localhost';
 const port= process.env.PORT || 3001;
 const app = express();
 app.use(cors());
 app.use(express.json());
-config();
+// config();
 
 const dbPool = mysql.createPool({
   host: process.env.db_host,
