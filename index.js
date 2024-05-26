@@ -60,7 +60,6 @@ app.get("/", (req, res) => {
           res.sendStatus(500);
         } else {
           res.json(results);
-          console.log(results);
         }
       });
     }
