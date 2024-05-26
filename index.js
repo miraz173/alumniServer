@@ -24,12 +24,10 @@ app.get("/", (req, res) => {
   
   const query = req.query.query;
   const searchQuery = (query && query.toString().trim().slice(1)) || "RUET";
-  // console.log("input text:", searchQuery, query);
 
   const keywords = searchQuery.split(",").map((keyword) => keyword.trim());
   const keywordList = keywords.map((keyword) => `'${keyword}'`).join(",");
   const keywordList2 = keywords.map((keyword) => `'%${keyword}%'`).join(" or keywords.attribute like ");
-  // console.log(keywordList2, keywords);
 
   const sql = `
   select  a.*, 
@@ -55,7 +53,6 @@ app.get("/", (req, res) => {
       res.sendStatus(500);
     } else {
       let qry = query[0]==='1'? sql:sql2;
-      // console.log('\n---  ', qry, "  ---");
       connection.query(qry, (error, results) => {
         connection.release();
         if (error) {
@@ -72,10 +69,8 @@ app.get("/", (req, res) => {
 });
 
 app.post("/", (req, res) => {
-  // console.log('post called');
 
   const person = req.body;
-// console.log(person);
   const personArr = [
     person.roll,
     person.name,
@@ -254,6 +249,6 @@ app.post("/kahoot", (req, res) => {
   });
 })
 
-app.listen(port, ip, () => {
+app.listen(port, () => {
   console.log(`Server is running on port ${port}, ain't it?`);
 });
