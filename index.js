@@ -1,14 +1,16 @@
 import jwt from "jsonwebtoken";
+import {config} from "dotenv";
 import express from "express";
 import bcrypt from "bcrypt";
 import mysql from "mysql2";
 import cors from "cors";
 
-const ip = '0.0.0.0';
-const PORT = process.env.PORT || 3000;
+const ip = 'localhost';
+const port= process.env.PORT || 3001;
 const app = express();
 app.use(cors());
 app.use(express.json());
+config();
 
 const dbPool = mysql.createPool({
   host: process.env.db_host,
@@ -19,15 +21,15 @@ const dbPool = mysql.createPool({
 });
 
 app.get("/", (req, res) => {
-  console.clear();
-  console.log('get called');
+  
   const query = req.query.query;
   const searchQuery = (query && query.toString().trim().slice(1)) || "RUET";
+  // console.log("input text:", searchQuery, query);
 
   const keywords = searchQuery.split(",").map((keyword) => keyword.trim());
   const keywordList = keywords.map((keyword) => `'${keyword}'`).join(",");
   const keywordList2 = keywords.map((keyword) => `'%${keyword}%'`).join(" or keywords.attribute like ");
-  console.log(keywordList2, keywords);
+  // console.log(keywordList2, keywords);
 
   const sql = `
   select  a.*, 
@@ -53,7 +55,7 @@ app.get("/", (req, res) => {
       res.sendStatus(500);
     } else {
       let qry = query[0]==='1'? sql:sql2;
-      console.log(qry, "---");
+      // console.log('\n---  ', qry, "  ---");
       connection.query(qry, (error, results) => {
         connection.release();
         if (error) {
@@ -61,6 +63,7 @@ app.get("/", (req, res) => {
           res.sendStatus(500);
         } else {
           res.json(results);
+          console.log(results);
         }
       });
     }
@@ -68,41 +71,75 @@ app.get("/", (req, res) => {
 
 });
 
+app.post("/", (req, res) => {
+  // console.log('post called');
 
-app.get("/", (req, res) => {
-  const query = req.query.query;
-  const searchQuery = (query && query.toString().trim().slice(1)) || "RUET";
-
-  const keywords = searchQuery.split(",").map((keyword) => keyword.trim());
-  const keywordList = keywords.map((keyword) => `'${keyword}'`).join(",");
-  const keywordList2 = keywords.map((keyword) => `'%${keyword}%'`).join(" or keywords.attribute like ");
-  console.log(keywordList2, keywords);
+  const person = req.body;
+// console.log(person);
+  const personArr = [
+    person.roll,
+    person.name,
+    person.thumbnail,
+    person.image,
+    person.position,
+    person.company,
+    person.higherEd,
+    person.city,
+    person.state,
+    person.country,
+    person.contacts,
+    person.about,
+    person.attributes,
+    person.password
+  ];
 
   const sql = `
-  select  a.*, 
-  CONCAT_WS(', ', a.roll, higherEd, state, country, attributes) AS keywords 
-  from alumni a
-  join keywords on keywords.roll=a.roll 
-  where keywords.attribute in (${keywordList})
-  GROUP BY a.roll
-  HAVING COUNT(DISTINCT keywords.attribute) = ${keywords.length};`;
+    INSERT INTO cse3100.alumni (roll, name, thumbnail, image, position, higherEd, company, city, state, country, contacts, about, attributes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) as pdata
+    ON DUPLICATE KEY UPDATE
+      name = pdata.name,
+      thumbnail = pdata.thumbnail,
+      image = pdata.image,
+      position = pdata.position,
+      company = pdata.company,
+      higherEd = pdata.higherEd,
+      city = pdata.city,
+      state = pdata.state,
+      country = pdata.country,
+      contacts = pdata.contacts,
+      about = pdata.about,
+      attributes=pdata.attributes;
+    `; //doesn't have password verification embedded in it.
 
-  const sql2 = `
-  select  a.*, 
-  CONCAT_WS(', ', a.roll, higherEd, state, country, attributes) AS keywords 
-  from alumni a
-  join keywords on keywords.roll=a.roll 
-  where keywords.attribute like ${keywordList2}
-  GROUP BY a.roll
-  HAVING COUNT(DISTINCT keywords.attribute) = ${keywords.length};`;
+  const sql2 = `INSERT INTO alumni (roll, name, thumbnail, image, position, company, higherEd, city, state, country, contacts, about, attributes)
+  SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+  FROM DUAL
+  WHERE EXISTS (
+    SELECT 1
+    FROM users
+    WHERE users.roll = roll AND users.password = ?
+  )
+  ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    thumbnail = VALUES(thumbnail),
+    image = VALUES(image),
+    position = VALUES(position),
+    company = VALUES(company),
+    higherEd = VALUES(higherEd),
+    city = VALUES(city),
+    state = VALUES(state),
+    country = VALUES(country),
+    contacts = VALUES(contacts),
+    about = VALUES(about),
+    attributes = VALUES(attributes);
+  `
 
   dbPool.getConnection((err, connection) => {
     if (err) {
-      console.error("Error connecting to MySQL:", err);
+      console.log("Error connecting to MySQL:", err);
       res.sendStatus(500);
     } else {
-      let qry = query[0]==='1'? sql:sql2;
-      connection.query(qry, (error, results) => {
+      connection.query(sql2, personArr, (error, results) => {
         connection.release();
         if (error) {
           console.error("Database query error:", error);
@@ -113,7 +150,6 @@ app.get("/", (req, res) => {
       });
     }
   });
-
 });
 
 app.post("/login", (req, res) => {
@@ -218,6 +254,6 @@ app.post("/kahoot", (req, res) => {
   });
 })
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}. And I'm 173r`);
+app.listen(port, ip, () => {
+  console.log(`Server is running on port ${port}, ain't it?`);
 });
