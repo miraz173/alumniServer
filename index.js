@@ -1,12 +1,12 @@
+// import { config } from "dotenv";
 import jwt from "jsonwebtoken";
-// import {config} from "dotenv";
 import express from "express";
 import bcrypt from "bcrypt";
 import mysql from "mysql2";
 import cors from "cors";
 
-// const ip = 'localhost';
-const port= process.env.PORT || 3001;
+// const ip = "localhost";
+const port = process.env.PORT || 3001;
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -21,13 +21,16 @@ const dbPool = mysql.createPool({
 });
 
 app.get("/", (req, res) => {
-  
   const query = req.query.query;
   const searchQuery = (query && query.toString().trim().slice(1)) || "RUET";
+  // console.log("input text:", searchQuery, query);
 
   const keywords = searchQuery.split(",").map((keyword) => keyword.trim());
   const keywordList = keywords.map((keyword) => `'${keyword}'`).join(",");
-  const keywordList2 = keywords.map((keyword) => `'%${keyword}%'`).join(" or keywords.attribute like ");
+  const keywordList2 = keywords
+    .map((keyword) => `'%${keyword}%'`)
+    .join(" or keywords.attribute like ");
+  // console.log(keywordList2, keywords);
 
   const sql = `
   select  a.*, 
@@ -52,7 +55,8 @@ app.get("/", (req, res) => {
       console.error("Error connecting to MySQL:", err);
       res.sendStatus(500);
     } else {
-      let qry = query[0]==='1'? sql:sql2;
+      let qry = query[0] === "1" ? sql : sql2;
+      // console.log('\n---  ', qry, "  ---");
       connection.query(qry, (error, results) => {
         connection.release();
         if (error) {
@@ -64,12 +68,13 @@ app.get("/", (req, res) => {
       });
     }
   });
-
 });
 
-app.post("/", (req, res) => {
+app.post("/", async (req, res) => {
+  // "async" keyword added for line 227/new query module";
 
   const person = req.body;
+  // console.log(person);
   const personArr = [
     person.roll,
     person.name,
@@ -84,7 +89,7 @@ app.post("/", (req, res) => {
     person.contacts,
     person.about,
     person.attributes,
-    person.password
+    person.password,
   ];
 
   const sql = `
@@ -126,19 +131,168 @@ app.post("/", (req, res) => {
     contacts = VALUES(contacts),
     about = VALUES(about),
     attributes = VALUES(attributes);
-  `
+  `;
+
+  let str = `${person.name},${person.roll},${person.position},${person.company},${person.higherEd},${person.city},${person.state},${person.country},${person.attributes}`;
+
+  let strArr = str
+    .split(",") // Split by comma
+    .map((item) => item.trim()) // Trim leading and trailing spaces
+    .filter((item) => item !== ""); // Remove empty elements
+
+  // Prepare sql3 query for deletion and insertion into keywords
+  let sql3 = `DELETE FROM keywords WHERE roll = ? AND EXISTS ( SELECT 1 FROM users WHERE users.roll = keywords.roll AND users.password = ? );`;
+  let sql4 = `INSERT INTO \`keywords\` (\`roll\`, \`attribute\`) VALUES `;
+
+  let sqlValues = [];
+  strArr.forEach((item, index) => {
+    if (index === 0) {
+      sql4 += "(?, ?)";
+    } else {
+      sql4 += ", (?, ?)";
+    }
+    sqlValues.push(person.roll, item);
+  });
+  sql4 += ";"; // " AND EXISTS ( SELECT 1 FROM users WHERE users.roll = keywords.roll AND users.password = ?);";
+  // sqlValues.push(person.password);
+
+  // dbPool.getConnection((err, connection) => {
+  //   if (err) {
+  //     console.error("Error connecting to MySQL:", err);
+  //     res.sendStatus(500);
+  //     return;
+  //   }
+
+  //   else {
+  //     connection.query(sql2, personArr, (error, results) => {
+  //       if (error) {
+  //         connection.release();
+  //         console.error("Database query error:", error);
+  //         res.sendStatus(500);
+  //         return;
+  //       } else {
+  //         connection.query(
+  //           sql3,
+  //           [person.roll, person.password],
+  //           (error, results) => {
+  //             connection.release();
+  //             if (error) {
+  //               console.error("Database query error:", error);
+  //               res.sendStatus(500);
+  //               return;
+  //             } else {
+  //               connection.query(sql4, sqlValues, (error, results) => {
+  //                 connection.release();
+  //                 if (error) {
+  //                   console.error("Database query error:", error);
+  //                   res.sendStatus(500);
+  //                   return;
+  //                 } else {
+  //                   res.json(results);
+  //                 }
+  //               });
+  //             }
+  //           }
+  //         );
+  //       }
+  //     });
+  //   }
+  // });
+
+  //---> async-await version of the above code <---//
+  const getConnection = (pool) => {
+    return new Promise((resolve, reject) => {
+      pool.getConnection((err, connection) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(connection);
+        }
+      });
+    });
+  };
+
+  const query = (connection, sql, params) => {
+    return new Promise((resolve, reject) => {
+      connection.query(sql, params, (error, results) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(results);
+        }
+      });
+    });
+  };
+
+  // app.post("/your-endpoint", async (req, res) => {
+  let connection;
+
+  try {
+    connection = await getConnection(dbPool);
+
+    // Execute first query
+    await query(connection, sql2, personArr);
+
+    // Execute second query
+    await query(connection, sql3, [person.roll, person.password]);
+
+    // Execute third query
+    const results = await query(connection, sql4, sqlValues);
+
+    // Send response
+    res.json(results);
+  } catch (err) {
+    console.error("Database error:", err);
+    res.sendStatus(500);
+  } finally {
+    if (connection) connection.release();
+  }
+  // });
+  //---> async-await version of the above code ends here <---//
+});
+
+app.post("/cngpass", (req, res) => {
+
+  // let query = `UPDATE users SET password=? WHERE roll=?;`;
+  // let params = [
+  //   req.body.newPass,
+  //   req.body.roll,
+  // ];
+  let query = `UPDATE users u JOIN ( SELECT roll FROM users WHERE roll = ? AND password = ? ) subquery ON u.roll = subquery.roll SET u.password = ?;`;
+
+  let params = [
+    req.body.roll,
+    req.body.password,
+    req.body.newPass,
+  ];
+  // Hash new password
+  // let saltRounds = 2;
+  // const hashPassword = async (plainTextPassword) => {
+  //   try {
+  //     const salt = await bcrypt.genSalt(saltRounds);
+  //     const hash = await bcrypt.hash(plainTextPassword, salt);
+  //     console.log("Hashed password:", hash);
+  //     return hash;
+  //   } catch (err) {
+  //     console.error("Error hashing password:", err);
+  //   }
+  // };
+  // params[2] = hashPassword(params[2]);
 
   dbPool.getConnection((err, connection) => {
     if (err) {
-      console.log("Error connecting to MySQL:", err);
+      console.error("Error connecting to MySQL:", err);
       res.sendStatus(500);
     } else {
-      connection.query(sql2, personArr, (error, results) => {
+      connection.query(query, params, (error, results) => {
         connection.release();
         if (error) {
           console.error("Database query error:", error);
           res.sendStatus(500);
+          return;
         } else {
+          console.log(`password change request sent by ${req.body.roll}`);
+          console.log(params);
           res.json(results);
         }
       });
@@ -185,12 +339,20 @@ app.post("/login", (req, res) => {
             //     } else if (bcryptResult) {
             //       console.log("Password matched!");
             //       // If passwords match, generate a JWT and send it as a response
-            //       const token = jwt.sign({ userId: user.roll }, "your_secret_key", {
-            //         expiresIn: "1h",
-            //       });
+            //       const token = jwt.sign(
+            //         { userId: user.roll },
+            //         "your_secret_key",
+            //         {
+            //           expiresIn: "1h",
+            //         }
+            //       );
             //       res.json({ token });
             //     } else {
-            //       console.log("Passwords don't match:", password, user.password);
+            //       console.log(
+            //         "Passwords don't match:",
+            //         password,
+            //         user.password
+            //       );
             //       // Passwords don't match
             //       res.status(401).json({ message: "Authentication failed" });
             //     }
@@ -210,9 +372,7 @@ app.post("/login", (req, res) => {
               // Passwords don't match
               res.status(401).json({ message: "Authentication failed" });
             }
-
-          }
-          else {
+          } else {
             console.log("user not found !");
             // User not found
             res.status(401).json({ message: "Authentication failed" });
@@ -224,7 +384,7 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/kahoot", (req, res) => {
-  console.log('kahoot called');
+  console.log("kahoot called");
   let sql = `SELECT attribute, COUNT(*) AS attCount
   FROM keywords
   GROUP BY attribute
@@ -246,7 +406,7 @@ app.post("/kahoot", (req, res) => {
       });
     }
   });
-})
+});
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}, ain't it?`);
