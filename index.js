@@ -8,6 +8,20 @@ import cors from "cors";
 // const ip = "localhost";
 const port = process.env.PORT || 3001;
 const app = express();
+// Add this at the top of your server.js, after 'app = express()'
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; " + // Allow resources from your own domain
+    "img-src 'self' https://alumniserver.up.railway.app https://res.cloudinary.com data:; " + // Allow images from your domain, Cloudinary, and data URIs
+    "script-src 'self' 'unsafe-inline' https://widget.cloudinary.com https://upload-widget.cloudinary.com; " + // Allow scripts from your domain, Cloudinary widget, and inline scripts (use 'unsafe-inline' with caution or a nonce)
+    "style-src 'self' 'unsafe-inline';" + // Allow styles from your domain and inline styles
+    "connect-src 'self' https://alumniserver.up.railway.app;" // Allow connections to your backend
+  );
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
 // config();
@@ -386,7 +400,7 @@ app.post("/login", (req, res) => {
   });
 });
 
-app.post("/kahoot", (req, res) => {
+app.get("/kahoot", (req, res) => {
   console.log("kahoot called");
   let sql = `SELECT attribute, COUNT(*) AS attCount
   FROM keywords
@@ -414,5 +428,6 @@ app.post("/kahoot", (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}, ain't it?`);
 });
+
 
 
