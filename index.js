@@ -15,9 +15,12 @@ app.use(express.json());
 const dbPool = mysql.createPool({
   host: process.env.db_host,
   user: process.env.db_user,
-  port: "3306",
+  port:  process.env.db_port,
   password: process.env.db_pass,
-  database: process.env.db_db,
+  database: process.env.db_db, 
+  ssl: {
+    rejectUnauthorized: true, // Aiven requires SSL
+  },
 });
 
 app.get("/", (req, res) => {
@@ -411,3 +414,4 @@ app.post("/kahoot", (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}, ain't it?`);
 });
+
