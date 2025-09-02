@@ -19,7 +19,7 @@ const dbPool = mysql.createPool({
   password: process.env.db_pass,
   database: process.env.db_db, 
   ssl: {
-    rejectUnauthorized: true, // Aiven requires SSL
+    rejectUnauthorized: false, // Aiven requires SSL
   },
 });
 
@@ -414,4 +414,5 @@ app.post("/kahoot", (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}, ain't it?`);
 });
+
 
